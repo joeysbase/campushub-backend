@@ -1,0 +1,5 @@
+extends:
+  - recommended
+rules:
+  # The lab mandates a localhost development server URL.
+  no-server-example.com: off
