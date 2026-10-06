@@ -1,5 +1,5 @@
 import type { CreateReservationRequest } from '../types/reservation';
-import { createHttpError } from './httpError';
+import { validationError } from './errors';
 
 /** RFC 3339 / ISO 8601 date-time, as required by OpenAPI `format: date-time`. */
 const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/i;
@@ -11,8 +11,8 @@ const CREATE_RESERVATION_FIELDS: readonly (keyof CreateReservationRequest)[] = [
   'endTime',
 ];
 
-const validationError = (message: string): Error =>
-  createHttpError(400, 'VALIDATION_ERROR', message);
+/** MongoDB ObjectId: 24 hexadecimal characters. */
+const OBJECT_ID_PATTERN = /^[a-f0-9]{24}$/i;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -67,6 +67,9 @@ export const parseCreateReservationRequest = (body: unknown): CreateReservationR
     endTime: requireNonEmptyString(body, 'endTime'),
   };
 
+  if (!OBJECT_ID_PATTERN.test(request.resourceId)) {
+    throw validationError('resourceId must be a 24-character hexadecimal ObjectId.');
+  }
   if (!isIsoDateTime(request.startTime)) {
     throw validationError('startTime must be a valid ISO 8601 date-time string.');
   }

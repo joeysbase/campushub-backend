@@ -135,8 +135,9 @@ components:
       properties:
         id:
           type: string
-          description: Unique resource identifier.
-          example: res-101
+          description: Unique resource identifier (MongoDB ObjectId).
+          pattern: '^[a-fA-F0-9]{24}$'
+          example: '000000000000000000000101'
         name:
           type: string
           minLength: 1
@@ -159,12 +160,14 @@ components:
       properties:
         id:
           type: string
-          description: Unique reservation identifier.
-          example: rsv-1
+          description: Unique reservation identifier (MongoDB ObjectId).
+          pattern: '^[a-fA-F0-9]{24}$'
+          example: '66f1a2b3c4d5e6f708192a3b'
         resourceId:
           type: string
-          minLength: 1
-          example: res-101
+          description: ID of the reserved Resource (MongoDB ObjectId).
+          pattern: '^[a-fA-F0-9]{24}$'
+          example: '000000000000000000000101'
         userId:
           type: string
           minLength: 1
@@ -189,8 +192,9 @@ components:
       properties:
         resourceId:
           type: string
-          minLength: 1
-          example: res-101
+          description: ID of the reserved Resource (MongoDB ObjectId).
+          pattern: '^[a-fA-F0-9]{24}$'
+          example: '000000000000000000000101'
         userId:
           type: string
           minLength: 1
@@ -236,7 +240,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             code: RESOURCE_NOT_FOUND
-            message: Resource res-999 does not exist.
+            message: Resource 000000000000000000000999 does not exist.
     InternalServerError:
       description: Unexpected server error.
       content:

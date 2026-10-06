@@ -1,46 +1,31 @@
-import type { Resource } from '../types/reservation';
+import { isValidObjectId } from 'mongoose';
+import { ResourceModel, type ResourceDocument } from '../models/Resource.model';
+import { RESOURCE_TYPES, type Resource, type ResourceType } from '../types/reservation';
 
-/**
- * In-memory resource store for local development and testing.
- * Swap for ResourceModel (src/models/resource.model.ts) once MongoDB is wired up.
- */
-const resources: Resource[] = [
-  {
-    id: 'res-101',
-    name: 'Study Room 302',
-    type: 'ROOM',
-    location: 'Snell Library, Floor 3',
-    isAvailable: true,
-  },
-  {
-    id: 'res-102',
-    name: '3D Printer A',
-    type: 'EQUIPMENT',
-    location: 'EXP Makerspace',
-    isAvailable: true,
-  },
-  {
-    id: 'res-103',
-    name: 'Chemistry Lab B',
-    type: 'LAB',
-    location: 'Hurtig Hall, Room 110',
-    isAvailable: true,
-  },
-  {
-    id: 'res-104',
-    name: 'Study Room 105',
-    type: 'ROOM',
-    location: 'Snell Library, Floor 1',
-    isAvailable: false,
-  },
-];
+const toResource = (doc: ResourceDocument): Resource => ({
+  id: doc._id.toString(),
+  name: doc.name,
+  type: doc.type,
+  location: doc.location,
+  isAvailable: doc.isAvailable,
+});
+
+const isResourceType = (value: string): value is ResourceType =>
+  (RESOURCE_TYPES as readonly string[]).includes(value);
 
 export const listResources = async (type?: string): Promise<Resource[]> => {
-  return type === undefined
-    ? [...resources]
-    : resources.filter((resource) => resource.type === type);
+  if (type !== undefined && !isResourceType(type)) {
+    return []; // No resource can have an unknown type.
+  }
+  const filter = type === undefined ? {} : { type };
+  const docs = await ResourceModel.find(filter).sort({ name: 1 }).exec();
+  return docs.map(toResource);
 };
 
-export const findResourceById = async (id: string): Promise<Resource | undefined> => {
-  return resources.find((resource) => resource.id === id);
+export const findResourceById = async (id: string): Promise<Resource | null> => {
+  if (!isValidObjectId(id)) {
+    return null;
+  }
+  const doc = await ResourceModel.findById(id).exec();
+  return doc === null ? null : toResource(doc);
 };

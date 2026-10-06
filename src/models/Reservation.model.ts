@@ -1,8 +1,8 @@
-import { Schema, Types, model, type Model } from 'mongoose';
+import { Schema, model, type HydratedDocument, type Model, type Types } from 'mongoose';
 import { RESERVATION_STATUSES, type ReservationStatus } from '../types/reservation';
 
 /** Persisted Reservation fields; times are stored as Dates and serialized as ISO 8601. */
-export interface ReservationAttributes {
+export interface IReservation {
   resourceId: Types.ObjectId;
   userId: string;
   startTime: Date;
@@ -10,24 +10,17 @@ export interface ReservationAttributes {
   status: ReservationStatus;
 }
 
-const reservationSchema = new Schema<ReservationAttributes>(
+export type ReservationDocument = HydratedDocument<IReservation>;
+
+const reservationSchema = new Schema<IReservation>(
   {
-    resourceId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Resource',
-      required: true,
-    },
+    resourceId: { type: Schema.Types.ObjectId, ref: 'Resource', required: true },
     userId: { type: String, required: true, trim: true },
     startTime: { type: Date, required: true },
     endTime: { type: Date, required: true },
-    status: {
-      type: String,
-      enum: RESERVATION_STATUSES,
-      required: true,
-      default: 'PENDING',
-    },
+    status: { type: String, enum: RESERVATION_STATUSES, required: true, default: 'PENDING' },
   },
-  { versionKey: false, toJSON: { virtuals: true } },
+  { versionKey: false },
 );
 
 reservationSchema.pre('validate', function () {
@@ -40,7 +33,7 @@ reservationSchema.pre('validate', function () {
 reservationSchema.index({ resourceId: 1, startTime: 1, endTime: 1 });
 reservationSchema.index({ userId: 1, status: 1 });
 
-export const ReservationModel: Model<ReservationAttributes> = model<ReservationAttributes>(
+export const ReservationModel: Model<IReservation> = model<IReservation>(
   'Reservation',
   reservationSchema,
 );
