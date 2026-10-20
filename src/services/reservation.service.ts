@@ -4,6 +4,8 @@ import {
   ACTIVE_RESERVATION_STATUSES,
   type CreateReservationRequest,
   type Reservation,
+  type ReservationStatus,
+  type ReservationStatusUpdate,
 } from '../types/reservation';
 import { conflictError, notFoundError } from '../utils/errors';
 import { findResourceById } from './resource.service';
@@ -76,3 +78,45 @@ export const listActiveReservationsForUser = async (userId: string): Promise<Res
     .exec();
   return docs.map(toReservation);
 };
+
+/** Statuses each update may move a reservation out of. CANCELLED is terminal. */
+const ALLOWED_PREVIOUS_STATUSES: Record<ReservationStatusUpdate, readonly ReservationStatus[]> = {
+  CONFIRMED: ['PENDING'],
+  CANCELLED: ['PENDING', 'CONFIRMED'],
+};
+
+/**
+ * Moves a reservation to `status` in a single atomic update, so a concurrent change
+ * between reading and writing cannot produce an illegal transition.
+ */
+const updateReservationStatus = async (
+  id: string,
+  status: ReservationStatusUpdate,
+): Promise<Reservation> => {
+  const allowed = ALLOWED_PREVIOUS_STATUSES[status];
+  const updated = await ReservationModel.findOneAndUpdate(
+    { _id: id, status: { $in: allowed } },
+    { $set: { status } },
+    { returnDocument: 'after', runValidators: true },
+  ).exec();
+  if (updated !== null) {
+    return toReservation(updated);
+  }
+
+  const existing = await ReservationModel.findById(id).exec();
+  if (existing === null) {
+    throw notFoundError('RESERVATION_NOT_FOUND', `Reservation ${id} does not exist.`);
+  }
+  throw conflictError(
+    'INVALID_STATUS_TRANSITION',
+    `Cannot change reservation status from ${existing.status} to ${status}.`,
+  );
+};
+
+/** Cancels a PENDING or CONFIRMED reservation, freeing its time slot immediately. */
+export const cancelReservation = async (id: string): Promise<Reservation> =>
+  updateReservationStatus(id, 'CANCELLED');
+
+/** Confirms a PENDING reservation. */
+export const confirmReservation = async (id: string): Promise<Reservation> =>
+  updateReservationStatus(id, 'CONFIRMED');

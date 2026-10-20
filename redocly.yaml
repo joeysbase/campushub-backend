@@ -3,3 +3,6 @@ extends:
 rules:
   # The lab mandates a localhost development server URL.
   no-server-example.com: off
+  # Lab-mandated paths /reservations/user/{userId} (GET) and /reservations/{id}/cancel|confirm
+  # (PATCH) overlap only on paper: methods differ and {id} must be an ObjectId.
+  no-ambiguous-paths: off

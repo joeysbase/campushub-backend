@@ -39,6 +39,28 @@ export const parseResourceTypeFilter = (value: unknown): string | undefined => {
   return value;
 };
 
+/** Validates the optional `isAvailable` query parameter of GET /resources. */
+export const parseIsAvailableFilter = (value: unknown): boolean | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === 'true') {
+    return true;
+  }
+  if (value === 'false') {
+    return false;
+  }
+  throw validationError('isAvailable must be "true" or "false" when provided.');
+};
+
+/** Validates the `id` path parameter of PATCH /reservations/{id}/cancel and /confirm. */
+export const parseReservationId = (value: unknown): string => {
+  if (typeof value !== 'string' || !OBJECT_ID_PATTERN.test(value)) {
+    throw validationError('id must be a 24-character hexadecimal ObjectId.');
+  }
+  return value;
+};
+
 /** Validates the `userId` path parameter of GET /reservations/user/{userId}. */
 export const parseUserId = (value: unknown): string => {
   if (typeof value !== 'string' || value.trim() === '') {

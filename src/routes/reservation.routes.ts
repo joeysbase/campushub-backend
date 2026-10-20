@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { getUserReservations, postReservation } from '../controllers/reservation.controller';
+import {
+  getUserReservations,
+  patchCancelReservation,
+  patchConfirmReservation,
+  postReservation,
+} from '../controllers/reservation.controller';
 import { getResources } from '../controllers/resource.controller';
 
 /**
@@ -10,5 +15,7 @@ const reservationRouter = Router();
 reservationRouter.get('/resources', getResources);
 reservationRouter.post('/reservations', postReservation);
 reservationRouter.get('/reservations/user/:userId', getUserReservations);
+reservationRouter.patch('/reservations/:id/cancel', patchCancelReservation);
+reservationRouter.patch('/reservations/:id/confirm', patchConfirmReservation);
 
 export default reservationRouter;

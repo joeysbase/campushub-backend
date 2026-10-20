@@ -48,9 +48,18 @@ export interface ErrorResponse {
   message: string;
 }
 
-/** Query parameters of GET /resources */
-export interface ListResourcesQuery {
+/** Validated filters of GET /resources (from its `type` and `isAvailable` query parameters). */
+export interface ResourceFilter {
   type?: string;
+  isAvailable?: boolean;
+}
+
+/** Statuses a reservation can be moved to after creation. */
+export type ReservationStatusUpdate = Exclude<ReservationStatus, 'PENDING'>;
+
+/** Path parameters of PATCH /reservations/{id}/cancel and /reservations/{id}/confirm */
+export interface ReservationIdParams {
+  id: string;
 }
 
 /** Path parameters of GET /reservations/user/{userId} */
