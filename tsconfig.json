@@ -40,5 +40,7 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+  },
+  // Backend sources only; client/ has its own tsconfig.
+  "include": ["src"]
 }

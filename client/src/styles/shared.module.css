@@ -1,0 +1,32 @@
+.primaryButton {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  background: var(--neutral-bg);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.secondaryButton:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}

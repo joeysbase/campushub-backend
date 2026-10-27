@@ -4,7 +4,7 @@ This file provides context and governing rules for Claude Code (or any AI coding
 
 ## Project Overview
 
-**CampusHub** is a multi-tenant campus resource management system. This repository, `campushub-backend`, is the backend service: a TypeScript/Node.js/Express API backed by MongoDB (via Mongoose).
+**CampusHub** is a multi-tenant campus resource management system. This repository, `campushub-backend`, is the backend service: a TypeScript/Node.js/Express API backed by MongoDB (via Mongoose). The `client/` directory holds the React frontend that consumes this API; Sections 1–3 apply to the backend (`src/`), and Section 5 applies to `client/`.
 
 ## 1. Tech Stack & Libraries
 
@@ -50,6 +50,16 @@ If a task seems to require logic outside its designated layer, restructure the c
   - Note **why** any context-rule constraints from this file were applied (e.g. "moved DB query out of controller into a service to comply with architectural boundaries").
 - Do not include unrelated changes in a single commit/PR description. If a change touches multiple concerns, call that out explicitly.
 - Never commit secrets, `.env` files, `node_modules/`, or build output (`dist/`) — confirm `.gitignore` covers these before assuming a commit is safe.
+
+## 5. Frontend Guidelines (`client/`)
+
+- **Authorized stack:** React, React DOM, TypeScript, Vite (with `@vitejs/plugin-react`), `axios`, and `oxlint`. Styling uses **CSS Modules** (`*.module.css`) plus the shared design tokens in `client/src/index.css` — no CSS framework. The dependency rules in Section 1 apply here too.
+- **Component Architecture:** Functional components only, each with an explicit exported `...Props` interface. Files in `client/src/` are `.ts`/`.tsx`; no `.js`.
+- **State Management:** Use standard React hooks (`useState`, `useEffect`) or custom hooks in `client/src/hooks/`. **Never call the API inline inside JSX** or directly from a component body; components get data from hooks and send writes through event handlers.
+- **API layer:** All HTTP calls go through `client/src/api/campushubApi.ts`, whose request/response types (`client/src/types/campushub.ts`) mirror `docs/openapi.yaml`. If the spec changes, update both files in the same change.
+- **Async UI states:** Every async workflow must show a loading state, show an error state (via `ErrorBanner`, with a retry or dismiss action), and never leave a spinner hanging. Map backend error codes (e.g. `DOUBLE_BOOKING` → 409) to user-facing messages in `getApiErrorMessage`, not in components.
+- **Styling:** Keep styles modular and consistent: one `.module.css` per component, shared buttons in `client/src/styles/shared.module.css`, and colors only from the CSS variables in `index.css`.
+- **Verification:** `npx tsc -b`, `npm run lint`, and `npm run build` (run in `client/`) must pass with no warnings.
 
 ## Verification Expectations
 
