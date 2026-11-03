@@ -1,7 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { createReservation, getApiErrorMessage } from '../api/campushubApi';
-import type { Reservation, Resource } from '../types/campushub';
+import type { Reservation, Resource } from '@shared/contract';
+import { useCreateReservation } from '../hooks/useReservations';
 import { formatTimeRange } from '../utils/format';
+import {
+  validateBooking,
+  type BookingFormErrors,
+  type BookingFormValues,
+} from '../utils/validateBooking';
 import { ErrorBanner } from './ErrorBanner';
 import shared from '../styles/shared.module.css';
 import styles from './BookingForm.module.css';
@@ -13,39 +18,13 @@ export interface BookingFormProps {
   onBooked: (reservation: Reservation) => void;
 }
 
-/** Values of the two `datetime-local` inputs ("YYYY-MM-DDTHH:mm", local time). */
-interface BookingFormValues {
-  startTime: string;
-  endTime: string;
-}
-
-type BookingFormErrors = Partial<Record<keyof BookingFormValues, string>>;
-
 const EMPTY_VALUES: BookingFormValues = { startTime: '', endTime: '' };
-
-/** Client-side checks mirroring the backend's rules, so obvious mistakes never hit the API. */
-const validate = ({ startTime, endTime }: BookingFormValues, now: Date): BookingFormErrors => {
-  const errors: BookingFormErrors = {};
-  const start = new Date(startTime);
-  const end = new Date(endTime);
-
-  if (!startTime) errors.startTime = 'Choose a start time.';
-  else if (Number.isNaN(start.getTime())) errors.startTime = 'Enter a valid start time.';
-  else if (start <= now) errors.startTime = 'Start time must be in the future.';
-
-  if (!endTime) errors.endTime = 'Choose an end time.';
-  else if (Number.isNaN(end.getTime())) errors.endTime = 'Enter a valid end time.';
-  else if (!errors.startTime && end <= start) errors.endTime = 'End time must be after the start time.';
-
-  return errors;
-};
 
 export const BookingForm = ({ resource, userId, onBooked }: BookingFormProps) => {
   const [values, setValues] = useState<BookingFormValues>(EMPTY_VALUES);
   const [fieldErrors, setFieldErrors] = useState<BookingFormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastBooking, setLastBooking] = useState<Reservation | null>(null);
+  const create = useCreateReservation(onBooked);
 
   if (!resource) {
     return (
@@ -63,28 +42,21 @@ export const BookingForm = ({ resource, userId, onBooked }: BookingFormProps) =>
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    setSubmitError(null);
     setLastBooking(null);
 
-    const errors = validate(values, new Date());
+    const errors = validateBooking(values, new Date());
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    setIsSubmitting(true);
-    try {
-      const reservation = await createReservation({
-        resourceId: resource.id,
-        userId,
-        startTime: new Date(values.startTime).toISOString(),
-        endTime: new Date(values.endTime).toISOString(),
-      });
+    const reservation = await create.run({
+      resourceId: resource.id,
+      userId,
+      startTime: new Date(values.startTime).toISOString(),
+      endTime: new Date(values.endTime).toISOString(),
+    });
+    if (reservation) {
       setLastBooking(reservation);
       setValues(EMPTY_VALUES);
-      onBooked(reservation);
-    } catch (err: unknown) {
-      setSubmitError(getApiErrorMessage(err));
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -103,7 +75,7 @@ export const BookingForm = ({ resource, userId, onBooked }: BookingFormProps) =>
             onChange={(event) => handleChange('startTime', event.target.value)}
             aria-invalid={Boolean(fieldErrors.startTime)}
             aria-describedby={fieldErrors.startTime ? 'booking-startTime-error' : undefined}
-            disabled={isSubmitting}
+            disabled={create.isPending}
           />
           {fieldErrors.startTime && (
             <span id="booking-startTime-error" className={styles.fieldError}>
@@ -121,7 +93,7 @@ export const BookingForm = ({ resource, userId, onBooked }: BookingFormProps) =>
             onChange={(event) => handleChange('endTime', event.target.value)}
             aria-invalid={Boolean(fieldErrors.endTime)}
             aria-describedby={fieldErrors.endTime ? 'booking-endTime-error' : undefined}
-            disabled={isSubmitting}
+            disabled={create.isPending}
           />
           {fieldErrors.endTime && (
             <span id="booking-endTime-error" className={styles.fieldError}>
@@ -130,9 +102,7 @@ export const BookingForm = ({ resource, userId, onBooked }: BookingFormProps) =>
           )}
         </div>
 
-        {submitError && (
-          <ErrorBanner message={submitError} onDismiss={() => setSubmitError(null)} />
-        )}
+        {create.error && <ErrorBanner message={create.error} onDismiss={create.clearError} />}
         {lastBooking && (
           <p className={styles.success} role="status">
             Booked {formatTimeRange(lastBooking.startTime, lastBooking.endTime)}. Status:{' '}
@@ -140,8 +110,8 @@ export const BookingForm = ({ resource, userId, onBooked }: BookingFormProps) =>
           </p>
         )}
 
-        <button type="submit" className={shared.primaryButton} disabled={isSubmitting}>
-          {isSubmitting ? 'Booking…' : 'Request booking'}
+        <button type="submit" className={shared.primaryButton} disabled={create.isPending}>
+          {create.isPending ? 'Booking…' : 'Request booking'}
         </button>
       </form>
     </section>

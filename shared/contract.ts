@@ -1,12 +1,14 @@
 /**
- * Client-side mirrors of the component schemas in ../docs/openapi.yaml.
- * The OpenAPI spec is the authoritative contract — keep these in sync with it.
+ * API contract types shared by the backend (src/) and the client (client/src/).
+ * Mirrors the component schemas in docs/openapi.yaml, which is authoritative:
+ * when the spec changes, change this file, and both sides pick it up.
  */
 
 export const RESOURCE_TYPES = ['ROOM', 'EQUIPMENT', 'LAB'] as const;
 export type ResourceType = (typeof RESOURCE_TYPES)[number];
 
-export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+export const RESERVATION_STATUSES = ['PENDING', 'CONFIRMED', 'CANCELLED'] as const;
+export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 
 /** An ISO 8601 date-time string (OpenAPI `format: date-time`). */
 export type IsoDateTimeString = string;
@@ -31,7 +33,7 @@ export interface Reservation {
 }
 
 /** components/schemas/CreateReservationRequest — request body of POST /reservations */
-export interface CreateReservationDTO {
+export interface CreateReservationRequest {
   resourceId: string;
   userId: string;
   startTime: IsoDateTimeString;

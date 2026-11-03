@@ -2,7 +2,7 @@ import express, { type Express } from 'express';
 import { config } from './config';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import apiRouter from './routes';
-import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 const app: Express = express();
 

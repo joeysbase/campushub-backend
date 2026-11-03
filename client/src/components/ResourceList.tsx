@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useResources } from '../hooks/useResources';
-import { RESOURCE_TYPES, type Resource, type ResourceType } from '../types/campushub';
+import { RESOURCE_TYPES, type Resource, type ResourceType } from '@shared/contract';
 import { RESOURCE_TYPE_LABELS } from '../utils/format';
 import { ErrorBanner } from './ErrorBanner';
 import styles from './ResourceList.module.css';
@@ -59,9 +59,7 @@ export const ResourceList = ({ selectedResourceId, onSelect }: ResourceListProps
             >
               <div className={styles.cardHeader}>
                 <span className={styles.type}>{RESOURCE_TYPE_LABELS[resource.type]}</span>
-                <span
-                  className={resource.isAvailable ? styles.available : styles.unavailable}
-                >
+                <span className={resource.isAvailable ? styles.available : styles.unavailable}>
                   {resource.isAvailable ? 'Available' : 'Unavailable'}
                 </span>
               </div>

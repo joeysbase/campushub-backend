@@ -1,6 +1,6 @@
 /**
  * Framework-agnostic application errors. Services throw these; the HTTP layer
- * (middlewares/errorHandler.ts) maps each kind to a status code.
+ * (middleware/errorHandler.ts) maps each kind to a status code.
  */
 export type AppErrorKind = 'VALIDATION' | 'NOT_FOUND' | 'CONFLICT';
 

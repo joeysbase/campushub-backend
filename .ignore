@@ -1,0 +1,22 @@
+# Paths AI agents should not search or load as context: build output, dependencies,
+# lockfiles, logs, and historical lab write-ups. Ripgrep honors this file, and so do
+# the agent tools built on it (Claude Code's Grep/Glob). .claude/settings.json also
+# blocks direct reads of the generated paths.
+
+# Dependencies and lockfiles (read package.json instead)
+node_modules/
+package-lock.json
+
+# Build output, coverage, and source/bundle maps
+dist/
+build/
+coverage/
+*.map
+*.tsbuildinfo
+
+# Logs and secrets
+*.log
+.env
+
+# Historical lab logs: past incidents, not current rules (see CLAUDE.md)
+docs/lab*-*.md

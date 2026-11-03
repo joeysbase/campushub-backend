@@ -3,8 +3,8 @@ import { BookingForm } from './components/BookingForm';
 import { ResourceList } from './components/ResourceList';
 import { UserReservations } from './components/UserReservations';
 import { useResources } from './hooks/useResources';
-import { useUserReservations } from './hooks/useUserReservations';
-import type { Resource } from './types/campushub';
+import { useUserReservations } from './hooks/useReservations';
+import type { Resource } from '@shared/contract';
 import shared from './styles/shared.module.css';
 import styles from './App.module.css';
 
@@ -15,7 +15,7 @@ const App = () => {
   const [userId, setUserId] = useState<string>(DEFAULT_USER_ID);
   const [userIdDraft, setUserIdDraft] = useState<string>(DEFAULT_USER_ID);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
-  const reservationsQuery = useUserReservations(userId);
+  const reservations = useUserReservations(userId);
 
   // Unfiltered list, used only to show resource names in "My Bookings".
   const { data: allResources } = useResources();
@@ -62,9 +62,9 @@ const App = () => {
             key={selectedResource?.id ?? 'none'}
             resource={selectedResource}
             userId={userId}
-            onBooked={reservationsQuery.reload}
+            onBooked={reservations.reload}
           />
-          <UserReservations reservationsQuery={reservationsQuery} resourceNames={resourceNames} />
+          <UserReservations reservations={reservations} resourceNames={resourceNames} />
         </aside>
       </main>
     </div>

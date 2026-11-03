@@ -1,4 +1,4 @@
-import type { IsoDateTimeString, ResourceType } from '../types/campushub';
+import type { IsoDateTimeString, ResourceType } from '@shared/contract';
 
 export const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   ROOM: 'Study Room',

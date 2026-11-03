@@ -2,7 +2,7 @@
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
 
     // Environment Settings
@@ -41,6 +41,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  // Backend sources only; client/ has its own tsconfig.
-  "include": ["src"]
+  // Backend sources plus the shared API contract; client/ has its own tsconfig.
+  "include": ["src", "shared"]
 }

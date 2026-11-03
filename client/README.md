@@ -13,13 +13,18 @@ Vite proxies `/api` to `http://localhost:3000`, so the browser talks to a single
 
 ```
 src/
-├── api/campushubApi.ts     # Typed API client (mirrors docs/openapi.yaml) + error-message mapping
-├── types/campushub.ts      # Resource, Reservation, CreateReservationDTO, ErrorResponse
-├── hooks/                  # useApiQuery (loading/error/reload), useResources, useUserReservations
+├── api/campushubApi.ts     # Typed API client + error-message mapping
+├── hooks/
+│   ├── useApiQuery.ts      # Reads: loading / error / reload, ignores stale responses
+│   ├── useApiMutation.ts   # Writes: pending / error state
+│   ├── useResources.ts
+│   └── useReservations.ts  # useUserReservations (list + cancel), useCreateReservation
 ├── components/             # ResourceList, BookingForm, UserReservations, ErrorBanner
 ├── styles/shared.module.css
-└── utils/format.ts         # Labels and date formatting
+└── utils/                  # format.ts (labels, dates), validateBooking.ts
 ```
+
+API types (`Resource`, `Reservation`, `CreateReservationRequest`, ...) are imported from `@shared/contract`, which is `../shared/contract.ts`, the same file the backend uses.
 
 There is no authentication yet, so the current student is whatever ID is entered in the header (default `user-456`).
 

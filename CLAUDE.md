@@ -1,75 +1,61 @@
 # CLAUDE.md
 
-This file provides context and governing rules for Claude Code (or any AI coding agent) when working in this repository. These rules are mandatory constraints, not suggestions. If a request conflicts with these rules, follow the rules and flag the conflict to the user instead of silently overriding them.
+Mandatory rules for AI coding agents in this repository. If a request conflicts with them, follow the rules and flag the conflict instead of silently overriding them. If the project changes (new libraries, layers, or standards), update this file in the same change.
 
-## Project Overview
+## Project Map
 
-**CampusHub** is a multi-tenant campus resource management system. This repository, `campushub-backend`, is the backend service: a TypeScript/Node.js/Express API backed by MongoDB (via Mongoose). The `client/` directory holds the React frontend that consumes this API; Sections 1–3 apply to the backend (`src/`), and Section 5 applies to `client/`.
-
-## 1. Tech Stack & Libraries
-
-- **Authorized stack:** TypeScript, Node.js, Express, Mongoose.
-- **Authorized dev tooling:** `typescript`, `ts-node`, `@types/node`, `eslint`, `prettier`.
-- All source code must be written in TypeScript (`.ts`). **Raw JavaScript (`.js`) files are strictly forbidden** anywhere in `src/`.
-- Do not add new runtime or dev dependencies without explicit user approval. Do not introduce alternative frameworks (e.g. Fastify, Koa, NestJS), alternative ORMs/ODMs (e.g. Prisma, Sequelize, TypeORM), or utility libraries (e.g. lodash, moment) unless the user explicitly requests them.
-- Do not silently swap a package for a "better" alternative. If you believe a new dependency is warranted, propose it and explain why before installing it.
-
-## 2. Architectural Boundaries
-
-Enforce a strict 3-tier separation of concerns under `src/`. Every file must belong to exactly one of these layers, and must not perform the responsibilities of another layer:
+**CampusHub** is a campus resource reservation system: an Express + MongoDB (Mongoose) API and a React client.
 
 ```
-src/
-├── routes/        # Route definitions and middleware mapping only
-├── controllers/    # Request/response handling and status codes
-├── services/       # Pure business logic
-└── models/         # Mongoose schemas and interface definitions only
+src/           # Backend (TypeScript, Express 5, Mongoose)
+shared/        # contract.ts: API types used by both src/ and client/
+client/src/    # Frontend (React, Vite, axios, CSS Modules)
+docs/          # openapi.yaml is the authoritative API contract
 ```
 
-- **Routes** (`src/routes/`): Define endpoints and wire up middleware/controllers only. No business logic, no direct DB access, no response construction beyond delegating to a controller.
-- **Controllers** (`src/controllers/`): Parse the request, call the appropriate service, and shape the HTTP response (status codes, JSON payloads). **Controllers must never query the database directly** — all data access goes through a service.
-- **Services** (`src/services/`): Contain all business logic and are the only layer permitted to call models/perform database operations. Services must be framework-agnostic — no `Request`/`Response` objects (Express types) inside a service.
-- **Models** (`src/models/`): Mongoose schemas, models, and their corresponding TypeScript interfaces only. No business logic here.
+Agents should skip the paths in `.ignore` (dependencies, lockfiles, build output, logs, historical `docs/lab*-*.md` write-ups). Only read those when the user asks.
 
-If a task seems to require logic outside its designated layer, restructure the code to keep the boundary intact rather than taking a shortcut.
+## 1. Dependencies
 
-## 3. Coding Standards & Safety
+- **Backend:** TypeScript, Node.js, Express, Mongoose. Dev: `typescript`, `ts-node`, `@types/*`, `prettier`.
+- **Client:** React, React DOM, Vite (`@vitejs/plugin-react`), `axios`, `oxlint`. Styling is CSS Modules only (no CSS framework).
+- Do not add, remove, or swap dependencies without explicit user approval. Propose the change and explain why first.
+- TypeScript only (`.ts` / `.tsx`): no `.js` files in `src/`, `shared/`, or `client/src/`.
 
-- Every function signature (parameters and return type) and every database schema/document must have an explicit TypeScript `interface` (or `type`) definition. Do not rely on inferred or implicit types for public function signatures.
-- **The `any` type is disallowed.** Use precise types, `unknown` with narrowing, or generics instead. If a third-party library lacks types, write a minimal local type declaration rather than falling back to `any`.
-- All asynchronous code must use `async`/`await` with explicit error handling:
-  - Every `async` function that can reject must have its errors handled (`try`/`catch` or a passed-through error handler) — no unhandled promise rejections.
-  - In Express, use a consistent error-handling pattern (e.g. an async wrapper or centralized error-handling middleware) rather than ad hoc `try`/`catch` duplicated in every route.
-- Follow the existing ESLint and Prettier configuration. Do not disable lint rules inline (`// eslint-disable`) to work around a violation — fix the underlying code instead, unless the user explicitly approves an exception.
-- Prefer small, single-responsibility functions over large multi-purpose ones, consistent with the layer boundaries above.
+## 2. Backend Architecture (`src/`)
 
-## 4. Git & Commit Formatting
+Each file belongs to exactly one layer and does only that layer's job:
 
-- When proposing or generating a commit, PR, or diff description, keep it concise and structured:
-  - Summarize **what** was built/changed.
-  - Note **why** any context-rule constraints from this file were applied (e.g. "moved DB query out of controller into a service to comply with architectural boundaries").
-- Do not include unrelated changes in a single commit/PR description. If a change touches multiple concerns, call that out explicitly.
-- Never commit secrets, `.env` files, `node_modules/`, or build output (`dist/`) — confirm `.gitignore` covers these before assuming a commit is safe.
+- **`routes/`:** map endpoints to controllers. No logic, no DB access.
+- **`controllers/`:** parse and validate the request (`utils/validation.ts`), call a service, and set the status code and JSON. **Never touch models or the DB.**
+- **`services/`:** all business logic. The only layer that calls models. Framework-agnostic: no Express types, no HTTP status codes. Throw `AppError`s from `utils/errors.ts` (`validationError`, `notFoundError`, `conflictError`).
+- **`models/`:** Mongoose schemas and their document interfaces only.
+- **`middleware/errorHandler.ts`:** the only place that maps errors to HTTP responses (`AppError` kind to 400/404/409, anything else to 500).
 
-## 5. Frontend Guidelines (`client/`)
+If a task seems to need logic outside its layer, restructure to keep the boundary.
 
-- **Authorized stack:** React, React DOM, TypeScript, Vite (with `@vitejs/plugin-react`), `axios`, and `oxlint`. Styling uses **CSS Modules** (`*.module.css`) plus the shared design tokens in `client/src/index.css` — no CSS framework. The dependency rules in Section 1 apply here too.
-- **Component Architecture:** Functional components only, each with an explicit exported `...Props` interface. Files in `client/src/` are `.ts`/`.tsx`; no `.js`.
-- **State Management:** Use standard React hooks (`useState`, `useEffect`) or custom hooks in `client/src/hooks/`. **Never call the API inline inside JSX** or directly from a component body; components get data from hooks and send writes through event handlers.
-- **API layer:** All HTTP calls go through `client/src/api/campushubApi.ts`, whose request/response types (`client/src/types/campushub.ts`) mirror `docs/openapi.yaml`. If the spec changes, update both files in the same change.
-- **Async UI states:** Every async workflow must show a loading state, show an error state (via `ErrorBanner`, with a retry or dismiss action), and never leave a spinner hanging. Map backend error codes (e.g. `DOUBLE_BOOKING` → 409) to user-facing messages in `getApiErrorMessage`, not in components.
-- **Styling:** Keep styles modular and consistent: one `.module.css` per component, shared buttons in `client/src/styles/shared.module.css`, and colors only from the CSS variables in `index.css`.
-- **Verification:** `npx tsc -b`, `npm run lint`, and `npm run build` (run in `client/`) must pass with no warnings.
+## 3. Coding Standards
 
-## Verification Expectations
+- Explicit types on every exported function signature and schema. **No `any`**; use `unknown` and narrow it.
+- **Errors in Express:** controllers are plain `async` functions with **no `try`/`catch` and no wrapper**. Express 5 forwards thrown and rejected errors to `middleware/errorHandler.ts`.
+- **API types:** declare request/response shapes once, in `shared/contract.ts`, matching `docs/openapi.yaml`. Never redeclare them on either side; backend-only types go in `src/types/reservation.ts`.
+- Format with Prettier using the repo's `.prettierrc.json`, and only the files you changed. Never disable lint rules inline; fix the code.
+- Prefer small, single-responsibility functions.
 
-Before considering generated code complete, verify it against this file:
+## 4. Client Rules (`client/src/`)
 
-- [ ] Only TypeScript files were added/modified — no `.js` files.
-- [ ] No unauthorized dependencies were introduced.
-- [ ] Code is placed in the correct layer (`routes/`, `controllers/`, `services/`, `models/`) and does not cross responsibilities.
-- [ ] All function signatures and schemas have explicit types; no `any` is used.
-- [ ] Async operations have explicit error handling.
-- [ ] The proposed commit/diff description explains what was built and why any rules from this file were applied.
+- Functional components with an exported `...Props` interface.
+- **No API calls in components.** HTTP goes through `api/campushubApi.ts`. Reads use hooks built on `useApiQuery` (e.g. `useResources`), and writes use hooks built on `useApiMutation` (e.g. `useReservations.ts`).
+- Every async workflow shows a loading state and an `ErrorBanner` (with a retry or dismiss action), and never leaves a spinner hanging. Map backend error codes to messages in `getApiErrorMessage` only.
+- Keep pure logic (validation, formatting) in `utils/`. One `.module.css` per component, shared buttons in `styles/shared.module.css`, and colors only from the variables in `index.css`.
 
-This document is a living artifact. If project needs evolve (e.g. new authorized libraries, new layers, new standards), update this file explicitly rather than letting practice silently drift from what is documented here.
+## 5. Verify Before Finishing
+
+- Backend: `npx tsc --noEmit` and `npm run build`.
+- Client (in `client/`): `npx tsc -b`, `npm run lint`, and `npm run build`, all with no warnings.
+- Behavior changes: test with `docker compose up -d`, `npm run seed`, `npm run dev`, including the 400/404/409 paths.
+
+## 6. Commits
+
+- Say **what** changed and **why** any rule above shaped it (e.g. "moved the DB query into a service to keep controllers DB-free"). Keep unrelated changes separate.
+- Never commit `.env`, `node_modules/`, or `dist/`.

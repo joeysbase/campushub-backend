@@ -1,8 +1,6 @@
 import type { Request, Response } from 'express';
-import { getHealthStatus } from '../services/health.service';
-import { asyncHandler } from '../utils/asyncHandler';
+import { getHealthStatus, type HealthStatus } from '../services/health.service';
 
-export const getHealth = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
-  const health = getHealthStatus();
-  res.status(200).json(health);
-});
+export const getHealth = (_req: Request, res: Response<HealthStatus>): void => {
+  res.status(200).json(getHealthStatus());
+};

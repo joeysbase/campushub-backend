@@ -17,9 +17,15 @@ const OBJECT_ID_PATTERN = /^[a-f0-9]{24}$/i;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const requireNonEmptyString = (body: Record<string, unknown>, field: string): string => {
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim() !== '';
+
+const isObjectId = (value: unknown): value is string =>
+  typeof value === 'string' && OBJECT_ID_PATTERN.test(value);
+
+const requireField = (body: Record<string, unknown>, field: string): string => {
   const value = body[field];
-  if (typeof value !== 'string' || value.trim() === '') {
+  if (!isNonEmptyString(value)) {
     throw validationError(`${field} is required and must be a non-empty string.`);
   }
   return value;
@@ -33,7 +39,7 @@ export const parseResourceTypeFilter = (value: unknown): string | undefined => {
   if (value === undefined) {
     return undefined;
   }
-  if (typeof value !== 'string' || value.trim() === '') {
+  if (!isNonEmptyString(value)) {
     throw validationError('type must be a non-empty string when provided.');
   }
   return value;
@@ -55,7 +61,7 @@ export const parseIsAvailableFilter = (value: unknown): boolean | undefined => {
 
 /** Validates the `id` path parameter of PATCH /reservations/{id}/cancel and /confirm. */
 export const parseReservationId = (value: unknown): string => {
-  if (typeof value !== 'string' || !OBJECT_ID_PATTERN.test(value)) {
+  if (!isObjectId(value)) {
     throw validationError('id must be a 24-character hexadecimal ObjectId.');
   }
   return value;
@@ -63,7 +69,7 @@ export const parseReservationId = (value: unknown): string => {
 
 /** Validates the `userId` path parameter of GET /reservations/user/{userId}. */
 export const parseUserId = (value: unknown): string => {
-  if (typeof value !== 'string' || value.trim() === '') {
+  if (!isNonEmptyString(value)) {
     throw validationError('userId must be a non-empty string.');
   }
   return value;
@@ -83,13 +89,13 @@ export const parseCreateReservationRequest = (body: unknown): CreateReservationR
   }
 
   const request: CreateReservationRequest = {
-    resourceId: requireNonEmptyString(body, 'resourceId'),
-    userId: requireNonEmptyString(body, 'userId'),
-    startTime: requireNonEmptyString(body, 'startTime'),
-    endTime: requireNonEmptyString(body, 'endTime'),
+    resourceId: requireField(body, 'resourceId'),
+    userId: requireField(body, 'userId'),
+    startTime: requireField(body, 'startTime'),
+    endTime: requireField(body, 'endTime'),
   };
 
-  if (!OBJECT_ID_PATTERN.test(request.resourceId)) {
+  if (!isObjectId(request.resourceId)) {
     throw validationError('resourceId must be a 24-character hexadecimal ObjectId.');
   }
   if (!isIsoDateTime(request.startTime)) {

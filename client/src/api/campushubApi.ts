@@ -1,10 +1,10 @@
 import axios, { type AxiosInstance } from 'axios';
 import type {
-  CreateReservationDTO,
+  CreateReservationRequest,
   ErrorResponse,
   Reservation,
   Resource,
-} from '../types/campushub';
+} from '@shared/contract';
 
 /**
  * Typed client for the CampusHub API (docs/openapi.yaml). Requests go to
@@ -24,7 +24,9 @@ export const fetchResources = async (type?: string): Promise<Resource[]> => {
 };
 
 /** POST /reservations — 409 if the time window overlaps an active reservation. */
-export const createReservation = async (payload: CreateReservationDTO): Promise<Reservation> => {
+export const createReservation = async (
+  payload: CreateReservationRequest,
+): Promise<Reservation> => {
   const { data } = await http.post<Reservation>('/reservations', payload);
   return data;
 };
