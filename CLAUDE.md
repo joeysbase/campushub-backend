@@ -17,12 +17,14 @@ Agents should skip the paths in `.ignore` (dependencies, lockfiles, build output
 
 ## 1. Dependencies
 
-- **Backend:** TypeScript, Node.js, Express, Mongoose. Dev: `typescript`, `ts-node`, `@types/*`, `prettier`.
+- **Backend:** TypeScript, Node.js, Express, Mongoose. Dev: `typescript`, `ts-node`, `@types/*`, `prettier`, and for tests `jest`, `ts-jest`, `supertest`, `mongodb-memory-server`.
 - **Client:** React, React DOM, Vite (`@vitejs/plugin-react`), `axios`, `oxlint`. Styling is CSS Modules only (no CSS framework).
 - Do not add, remove, or swap dependencies without explicit user approval. Propose the change and explain why first.
 - TypeScript only (`.ts` / `.tsx`): no `.js` files in `src/`, `shared/`, or `client/src/`.
 
 ## 2. Backend Architecture (`src/`)
+
+`app.ts` builds the Express app (no DB connection, no `listen`), so tests can import it. `server.ts` connects to MongoDB and listens.
 
 Each file belongs to exactly one layer and does only that layer's job:
 
@@ -49,13 +51,22 @@ If a task seems to need logic outside its layer, restructure to keep the boundar
 - Every async workflow shows a loading state and an `ErrorBanner` (with a retry or dismiss action), and never leaves a spinner hanging. Map backend error codes to messages in `getApiErrorMessage` only.
 - Keep pure logic (validation, formatting) in `utils/`. One `.module.css` per component, shared buttons in `styles/shared.module.css`, and colors only from the variables in `index.css`.
 
-## 5. Verify Before Finishing
+## 5. Testing
 
-- Backend: `npx tsc --noEmit` and `npm run build`.
+- Unit tests: `src/services/__tests__/`. HTTP integration tests (Supertest against `app`): `src/routes/__tests__/`. Shared helpers: `src/test/fixtures.ts`.
+- `src/test/setup.ts` gives each test file its own in-memory MongoDB and empties the collections after each test. Never point tests at the real database.
+- Test business rules against the in-memory DB, not mocked models: the overlap rule *is* a query. Mock only to force failures (e.g. a 500).
+- Cover the failure paths, not just the happy path: every 400/404/409 code, boundary times (touching vs 1 ms overlap), and concurrency.
+- A known bug is recorded as `test.failing` with a comment, never deleted or skipped. When a fix lands, it turns red; switch it back to `test`.
+- `npm run test:coverage` enforces ≥80% statements and branches for `src/services/` and `src/controllers/`.
+
+## 6. Verify Before Finishing
+
+- Backend: `npx tsc --noEmit` (includes tests), `npm test`, and `npm run build`.
 - Client (in `client/`): `npx tsc -b`, `npm run lint`, and `npm run build`, all with no warnings.
 - Behavior changes: test with `docker compose up -d`, `npm run seed`, `npm run dev`, including the 400/404/409 paths.
 
-## 6. Commits
+## 7. Commits
 
 - Say **what** changed and **why** any rule above shaped it (e.g. "moved the DB query into a service to keep controllers DB-free"). Keep unrelated changes separate.
 - Never commit `.env`, `node_modules/`, or `dist/`.

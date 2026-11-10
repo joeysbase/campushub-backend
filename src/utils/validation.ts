@@ -31,8 +31,22 @@ const requireField = (body: Record<string, unknown>, field: string): string => {
   return value;
 };
 
+/**
+ * Date.parse silently rolls impossible values over (2026-02-30 → 03-02, 24:00 → next day),
+ * so check that the calendar date exists and the hour is 00–23, as RFC 3339 requires.
+ * Assumes the string already matched ISO_DATE_TIME_PATTERN.
+ */
+const isRealDateAndTime = (value: string): boolean => {
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  const hour = Number(value.slice(11, 13));
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth && hour <= 23;
+};
+
 export const isIsoDateTime = (value: string): boolean =>
-  ISO_DATE_TIME_PATTERN.test(value) && !Number.isNaN(Date.parse(value));
+  ISO_DATE_TIME_PATTERN.test(value) && isRealDateAndTime(value) && !Number.isNaN(Date.parse(value));
 
 /** Validates the optional `type` query parameter of GET /resources. */
 export const parseResourceTypeFilter = (value: unknown): string | undefined => {
