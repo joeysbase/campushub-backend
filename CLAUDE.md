@@ -17,7 +17,7 @@ Agents should skip the paths in `.ignore` (dependencies, lockfiles, build output
 
 ## 1. Dependencies
 
-- **Backend:** TypeScript, Node.js, Express, Mongoose. Dev: `typescript`, `ts-node`, `@types/*`, `prettier`, `eslint` + `typescript-eslint`, for tests `jest`, `ts-jest`, `supertest`, `mongodb-memory-server`, and for the CI agent `@anthropic-ai/sdk`.
+- **Backend:** TypeScript, Node.js, Express, Mongoose. Dev: `typescript`, `ts-node`, `@types/*`, `prettier`, `eslint` + `typescript-eslint`, for tests `jest`, `ts-jest`, `supertest`, `mongodb-memory-server`. CI uses `anthropics/claude-code-action`.
 - **Client:** React, React DOM, Vite (`@vitejs/plugin-react`), `axios`, `oxlint`. Styling is CSS Modules only (no CSS framework).
 - Do not add, remove, or swap dependencies without explicit user approval. Propose the change and explain why first.
 - TypeScript only (`.ts` / `.tsx`): no `.js` files in `src/`, `shared/`, or `client/src/`.
@@ -63,12 +63,12 @@ If a task seems to need logic outside its layer, restructure to keep the boundar
 ## 6. CI (`.github/workflows/ci.yml`)
 
 - Every push to `main` and every PR into `main` runs `npm ci`, `npm run lint`, and `npm test`.
-- If the Jest step fails, the `auto-fix` job sends the log to Claude (`scripts/auto-heal.ts`, needs the `ANTHROPIC_API_KEY` repo secret). The script may only rewrite existing non-test files under `src/`. The job re-runs lint and tests, and only if both pass opens a `fix/auto-heal-<run id>` PR into the failing branch.
+- If the Jest step fails, the `auto-fix` job runs Claude Code (`anthropics/claude-code-action`, auth from the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` repo secret) on the failure log. Claude may edit but not commit, and the job rejects any change outside existing non-test files under `src/`. It re-runs lint and tests, and only if both pass opens a `fix/auto-heal-<run id>` PR into the failing branch.
 - Auto-heal PRs are proposals. A human reviews the diff (root cause, no test changes) and fills in the PR's Audit Log before merging. Never merge one unreviewed.
 
 ## 7. Verify Before Finishing
 
-- Backend: `npx tsc --noEmit` (includes tests and scripts), `npm run lint`, `npm test`, and `npm run build`.
+- Backend: `npx tsc --noEmit` (includes tests), `npm run lint`, `npm test`, and `npm run build`.
 - Client (in `client/`): `npx tsc -b`, `npm run lint`, and `npm run build`, all with no warnings.
 - Behavior changes: test with `docker compose up -d`, `npm run seed`, `npm run dev`, including the 400/404/409 paths.
 

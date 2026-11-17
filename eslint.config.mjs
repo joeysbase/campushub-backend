@@ -1,4 +1,4 @@
-// Flat config for the backend (src/, shared/, scripts/). The client lints with oxlint.
+// Flat config for the backend (src/, shared/). The client lints with oxlint.
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -16,7 +16,7 @@ export default tseslint.config(
   },
   {
     // Process entry points and tooling may log progress.
-    files: ['src/server.ts', 'src/config/**', 'src/scripts/**', 'scripts/**'],
+    files: ['src/server.ts', 'src/config/**', 'src/scripts/**'],
     rules: { 'no-console': 'off' },
   },
 );
