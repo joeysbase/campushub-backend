@@ -20,9 +20,9 @@ jobs:
     outputs:
       tests-failed: ${{ steps.jest.outcome == 'failure' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -41,7 +41,7 @@ jobs:
 
       - name: Upload test log
         if: failure() && steps.jest.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: test-results.log
@@ -68,7 +68,7 @@ jobs:
       FIX_BRANCH: fix/auto-heal-${{ github.run_id }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
@@ -83,7 +83,7 @@ jobs:
             echo "An auto-heal PR is already open for $FAILING_BRANCH; not opening another." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.existing.outputs.count == '0'
         with:
           node-version: 24
@@ -95,7 +95,7 @@ jobs:
 
       - name: Download the failing test log
         if: steps.existing.outputs.count == '0'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: test-results
 
