@@ -31,7 +31,8 @@ const hasOverlappingReservation = async (
   const existing = await ReservationModel.exists({
     resourceId,
     status: { $in: ACTIVE_RESERVATION_STATUSES },
-    $or: [{ startTime: { $gte: endTime } }, { endTime: { $lte: startTime } }],
+    startTime: { $lt: endTime },
+    endTime: { $gt: startTime },
   }).exec();
   return existing !== null;
 };
