@@ -3,3 +3,8 @@ dist/
 .env
 *.log
 coverage/
+.DS_Store
+test-results.log
+verify.log
+auto-heal-*
+pr-body.md

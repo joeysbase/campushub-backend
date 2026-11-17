@@ -17,7 +17,7 @@ Agents should skip the paths in `.ignore` (dependencies, lockfiles, build output
 
 ## 1. Dependencies
 
-- **Backend:** TypeScript, Node.js, Express, Mongoose. Dev: `typescript`, `ts-node`, `@types/*`, `prettier`, and for tests `jest`, `ts-jest`, `supertest`, `mongodb-memory-server`.
+- **Backend:** TypeScript, Node.js, Express, Mongoose. Dev: `typescript`, `ts-node`, `@types/*`, `prettier`, `eslint` + `typescript-eslint`, for tests `jest`, `ts-jest`, `supertest`, `mongodb-memory-server`, and for the CI agent `@anthropic-ai/sdk`.
 - **Client:** React, React DOM, Vite (`@vitejs/plugin-react`), `axios`, `oxlint`. Styling is CSS Modules only (no CSS framework).
 - Do not add, remove, or swap dependencies without explicit user approval. Propose the change and explain why first.
 - TypeScript only (`.ts` / `.tsx`): no `.js` files in `src/`, `shared/`, or `client/src/`.
@@ -41,7 +41,7 @@ If a task seems to need logic outside its layer, restructure to keep the boundar
 - Explicit types on every exported function signature and schema. **No `any`**; use `unknown` and narrow it.
 - **Errors in Express:** controllers are plain `async` functions with **no `try`/`catch` and no wrapper**. Express 5 forwards thrown and rejected errors to `middleware/errorHandler.ts`.
 - **API types:** declare request/response shapes once, in `shared/contract.ts`, matching `docs/openapi.yaml`. Never redeclare them on either side; backend-only types go in `src/types/reservation.ts`.
-- Format with Prettier using the repo's `.prettierrc.json`, and only the files you changed. Never disable lint rules inline; fix the code.
+- `npm run lint` (ESLint, `eslint.config.mjs`) must pass. Format with Prettier using `.prettierrc.json`, and only the files you changed. Never disable lint rules inline; fix the code.
 - Prefer small, single-responsibility functions.
 
 ## 4. Client Rules (`client/src/`)
@@ -60,13 +60,19 @@ If a task seems to need logic outside its layer, restructure to keep the boundar
 - A known bug is recorded as `test.failing` with a comment, never deleted or skipped. When a fix lands, it turns red; switch it back to `test`.
 - `npm run test:coverage` enforces ≥80% statements and branches for `src/services/` and `src/controllers/`.
 
-## 6. Verify Before Finishing
+## 6. CI (`.github/workflows/ci.yml`)
 
-- Backend: `npx tsc --noEmit` (includes tests), `npm test`, and `npm run build`.
+- Every push to `main` and every PR into `main` runs `npm ci`, `npm run lint`, and `npm test`.
+- If the Jest step fails, the `auto-fix` job sends the log to Claude (`scripts/auto-heal.ts`, needs the `ANTHROPIC_API_KEY` repo secret). The script may only rewrite existing non-test files under `src/`. The job re-runs lint and tests, and only if both pass opens a `fix/auto-heal-<run id>` PR into the failing branch.
+- Auto-heal PRs are proposals. A human reviews the diff (root cause, no test changes) and fills in the PR's Audit Log before merging. Never merge one unreviewed.
+
+## 7. Verify Before Finishing
+
+- Backend: `npx tsc --noEmit` (includes tests and scripts), `npm run lint`, `npm test`, and `npm run build`.
 - Client (in `client/`): `npx tsc -b`, `npm run lint`, and `npm run build`, all with no warnings.
 - Behavior changes: test with `docker compose up -d`, `npm run seed`, `npm run dev`, including the 400/404/409 paths.
 
-## 7. Commits
+## 8. Commits
 
 - Say **what** changed and **why** any rule above shaped it (e.g. "moved the DB query into a service to keep controllers DB-free"). Keep unrelated changes separate.
 - Never commit `.env`, `node_modules/`, or `dist/`.

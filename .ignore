@@ -20,3 +20,9 @@ coverage/
 
 # Historical lab logs: past incidents, not current rules (see CLAUDE.md)
 docs/lab*-*.md
+
+# CI artifacts
+test-results.log
+verify.log
+auto-heal-*
+pr-body.md

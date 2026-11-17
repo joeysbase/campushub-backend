@@ -1,5 +1,5 @@
 {
-  // `npm run build`: compile the app only, without tests or test helpers.
+  // `npm run build`: compile the app only, without tests, test helpers, or CI scripts.
   "extends": "./tsconfig.json",
-  "exclude": ["src/**/__tests__/**", "src/test/**"]
+  "exclude": ["src/**/__tests__/**", "src/test/**", "scripts"]
 }

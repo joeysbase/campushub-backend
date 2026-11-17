@@ -41,6 +41,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  // Backend sources plus the shared API contract; client/ has its own tsconfig.
-  "include": ["src", "shared"]
+  // Backend sources, the shared API contract, and CI scripts; client/ has its own tsconfig.
+  "include": ["src", "shared", "scripts"]
 }

@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint & test
+    runs-on: ubuntu-latest
+    outputs:
+      tests-failed: ${{ steps.jest.outcome == 'failure' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run Jest
+        id: jest
+        run: |
+          set -o pipefail
+          npm test -- --ci 2>&1 | tee test-results.log
+
+      - name: Upload test log
+        if: failure() && steps.jest.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.log
+          retention-days: 7
+
+  auto-fix:
+    name: Auto-heal failing tests
+    needs: test
+    # Runs only when the Jest step failed (not install or lint). Skipped for fork PRs, which get
+    # no secrets and whose code we shouldn't hand write access, and for auto-heal branches
+    # themselves, so a bad patch can't trigger a fix-the-fix loop.
+    if: >-
+      failure() &&
+      needs.test.outputs.tests-failed == 'true' &&
+      (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) &&
+      !startsWith(github.head_ref, 'fix/auto-heal-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      # Branch whose tests failed; the fix PR targets it. Passed via env, never inlined into scripts.
+      FAILING_BRANCH: ${{ github.head_ref || github.ref_name }}
+      FIX_BRANCH: fix/auto-heal-${{ github.run_id }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Skip if a fix PR is already open for this branch
+        id: existing
+        run: |
+          open=$(gh pr list --base "$FAILING_BRANCH" --state open --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("fix/auto-heal-"))] | length')
+          echo "count=$open" >> "$GITHUB_OUTPUT"
+          if [ "$open" != "0" ]; then
+            echo "An auto-heal PR is already open for $FAILING_BRANCH; not opening another." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.existing.outputs.count == '0'
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.existing.outputs.count == '0'
+        run: npm ci
+
+      - name: Download the failing test log
+        if: steps.existing.outputs.count == '0'
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+
+      - name: Ask Claude for a patch
+        if: steps.existing.outputs.count == '0'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TEST_LOG: test-results.log
+          # Diff the branch against its PR base, or against the previous commit on a push.
+          BASE_REF: ${{ github.base_ref && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: npx ts-node scripts/auto-heal.ts
+
+      - name: Check the patch touches only application source
+        if: steps.existing.outputs.count == '0'
+        run: |
+          changed=$(git diff --name-only)
+          echo "Changed files:"; echo "$changed"
+          bad=$(echo "$changed" | grep -vE '^src/.+\.ts$' | grep -v '^$' || true)
+          tests=$(echo "$changed" | grep -E '/__tests__/|^src/test/' || true)
+          if [ -n "$bad$tests" ]; then
+            echo "::error::Patch touches files outside application source: $bad $tests"
+            exit 1
+          fi
+
+      - name: Verify the patch (lint + full test suite)
+        if: steps.existing.outputs.count == '0'
+        run: |
+          set -o pipefail
+          npm run lint
+          npm test -- --ci 2>&1 | tee verify.log
+
+      - name: Open the fix PR
+        if: steps.existing.outputs.count == '0'
+        run: |
+          {
+            cat auto-heal-pr-body.md
+            echo
+            echo "### Verification (run by the auto-fix job)"
+            echo "- \`npm run lint\`: passed"
+            echo "- \`npm test\`: $(grep -E '^Tests:' verify.log | tr -s ' ')"
+            echo "- Only application source changed; no test files were modified."
+            echo "- Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo "> PRs opened with the workflow token don't trigger CI themselves, which is why the job verifies the patch before opening this PR."
+            echo
+            echo "## Audit Log (human-in-the-loop review)"
+            echo
+            echo "_To be completed by the reviewer before merging:_"
+            echo "- [ ] The diagnosed root cause matches the failing tests."
+            echo "- [ ] The diff fixes application code only; no test assertions changed."
+            echo "- [ ] The fix is minimal and matches the intended behavior in docs/openapi.yaml."
+            echo "- [ ] Verified locally: \`npm run lint && npm test\`."
+          } > pr-body.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$FIX_BRANCH"
+          git add -- src
+          git commit -m "Auto-heal: fix failing tests on $FAILING_BRANCH" \
+            -m "Generated by the CI auto-fix job (run $GITHUB_RUN_ID). See the PR for the diagnosis."
+          git push origin "$FIX_BRANCH"
+          url=$(gh pr create --base "$FAILING_BRANCH" --head "$FIX_BRANCH" \
+            --title "Auto-heal: fix failing tests on $FAILING_BRANCH" --body-file pr-body.md)
+          echo "Opened $url" >> "$GITHUB_STEP_SUMMARY"
