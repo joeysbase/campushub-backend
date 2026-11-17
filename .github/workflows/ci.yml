@@ -101,6 +101,16 @@ jobs:
         with:
           name: test-results
 
+      # Claude Code loads .claude/settings.json, which denies reading *.log files (it keeps logs out of
+      # agent context). Hand it the log and the branch diff as .txt files it is allowed to read. They are
+      # gitignored (auto-heal-*), so the patch check below ignores them.
+      - name: Prepare the failure log and branch diff for Claude Code
+        if: steps.existing.outputs.count == '0'
+        run: |
+          cp test-results.log auto-heal-test-results.txt
+          git diff "$BASE_REF"...HEAD -- src shared > auto-heal-branch-diff.txt
+          wc -l auto-heal-test-results.txt auto-heal-branch-diff.txt
+
       - name: Claude Code diagnoses and patches the failure
         if: steps.existing.outputs.count == '0'
         uses: anthropics/claude-code-action@v1
@@ -110,12 +120,13 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
           prompt: |
-            Parse the attached Jest failure log (test-results.log in the repository root). Locate the
-            source code causing the failure in src/ and generate a patch that fixes the bug without
-            breaking existing tests.
+            Parse the attached Jest failure log (auto-heal-test-results.txt in the repository root, a
+            copy of the test-results.log captured by CI). Locate the source code causing the failure in
+            src/ and generate a patch that fixes the bug without breaking existing tests.
 
-            Context: the tests failed on branch ${{ env.FAILING_BRANCH }}. Run
-            `git diff ${{ env.BASE_REF }}...HEAD -- src shared` first; the bug is most likely in that diff.
+            Context: the tests failed on branch ${{ env.FAILING_BRANCH }}. That branch's changes against
+            ${{ env.BASE_REF }} are in auto-heal-branch-diff.txt; read it first, since the bug is most
+            likely there. Quote the failing test names you used in your report.
 
             Rules:
             - Fix application code only. Never edit, weaken, or delete tests (src/**/__tests__/, src/test/):
